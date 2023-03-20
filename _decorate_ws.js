@@ -2,6 +2,47 @@ const DefaultWebSocket = require("ws");
 const hidden_attr = require("./_symbols");
 
 
+function do_heartbeat(ws){
+    console.log("Setting up heartbeat mechanism.");
+
+    const pingTimeout = hidden_attr(this, "pingTimeout");
+    const pingFrequency = hidden_attr(this, "pingFrequency");
+
+    let lastPing = 0;
+    let lastPong = 0;
+    hidden_attr(this, "pingTimedOut", false);
+
+    let on_timeout = ()=>{
+        console.log("ReconnectingWebsocket: server no response...");
+        hidden_attr(this, "pingTimedOut", true);
+        this.refresh();
+    }
+
+    let recv_heartbeat = ()=>{
+        lastPong = new Date().getTime();
+        console.log("ReconnectingWebsocket: got pong!");
+    }
+    ws.on("pong", recv_heartbeat);
+
+    const pinging = setInterval(()=>{
+        if(lastPing - lastPong > pingTimeout) on_timeout();
+
+        if(
+            !ws ||
+            hidden_attr(this, "pingTimedOut")
+        ){
+            clearInterval(pinging);
+            return;
+        }
+        lastPing = new Date().getTime();
+        ws.ping();
+        console.log("ReconnectingWebsocket: send ping!");
+    }, pingTimeout / pingFrequency);
+}
+
+
+
+
 
 module.exports = function(ws, { reconnectAttempt }){
     const self = this;
@@ -91,4 +132,10 @@ module.exports = function(ws, { reconnectAttempt }){
         }*/
         this.dispatchEvent(new Event('error'));
     };
+
+    // if ws has .ping() defined(as in `ws` library), use that
+    if(ws.ping !== undefined){
+        do_heartbeat.call(this, ws);
+    }
+
 }

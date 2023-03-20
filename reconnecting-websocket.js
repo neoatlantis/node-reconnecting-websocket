@@ -139,7 +139,13 @@ class ReconnectingWebSocket extends EventTarget{
             maxReconnectAttempts: null,
 
             /** The binary type, possible values 'blob' or 'arraybuffer', default 'arraybuffer'. */
-            binaryType: 'arraybuffer'
+            binaryType: 'arraybuffer',
+
+            /** Ping timeout: timeout if connection is down for these milliseconds. */
+            pingTimeout: 10000,
+
+            /** Ping frequency: ping every pingTimeout/pingFrequency milliseconds. */
+            pingFrequency: 2,
         }
         if (!options) { options = {}; }
 
