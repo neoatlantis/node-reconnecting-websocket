@@ -12,5 +12,8 @@
   },
   "author": "Joe Walnes",
   "license": "MIT",
-  "homepage": "https://github.com/neoatlantis/node-reconnecting-websocket"
+  "homepage": "https://github.com/neoatlantis/node-reconnecting-websocket",
+  "dependencies": {
+    "ws": "^8.13.0"
+  }
 }

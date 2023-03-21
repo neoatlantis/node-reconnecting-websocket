@@ -8,8 +8,8 @@ function do_heartbeat(ws){
     const pingTimeout = hidden_attr(this, "pingTimeout");
     const pingFrequency = hidden_attr(this, "pingFrequency");
 
-    let lastPing = 0;
-    let lastPong = 0;
+    hidden_attr(this, "pingLast", 0);
+    hidden_attr(this, "pongLast", 0);
     hidden_attr(this, "pingTimedOut", false);
 
     let on_timeout = ()=>{
@@ -19,13 +19,18 @@ function do_heartbeat(ws){
     }
 
     let recv_heartbeat = ()=>{
-        lastPong = new Date().getTime();
+        hidden_attr(this, "pongLast", new Date().getTime());
         console.log("ReconnectingWebsocket: got pong!");
     }
     ws.on("pong", recv_heartbeat);
 
     const pinging = setInterval(()=>{
-        if(lastPing - lastPong > pingTimeout) on_timeout();
+        if(
+            hidden_attr(this, "pingLast") - hidden_attr(this, "pongLast") > 
+            pingTimeout
+        ){
+            on_timeout();
+        }
 
         if(
             !ws ||
@@ -34,7 +39,7 @@ function do_heartbeat(ws){
             clearInterval(pinging);
             return;
         }
-        lastPing = new Date().getTime();
+        hidden_attr(this, "pingLast", new Date().getTime());
         ws.ping();
         console.log("ReconnectingWebsocket: send ping!");
     }, pingTimeout / pingFrequency);
@@ -44,8 +49,18 @@ function do_heartbeat(ws){
 
 
 
-module.exports = function(ws, { reconnectAttempt }){
+module.exports = function({ reconnectAttempt }){
     const self = this;
+
+    const WebSocket = hidden_attr(this, "ws");
+    const url = hidden_attr(this, "url");
+    const protocols = hidden_attr(this, "protocols");
+
+    let ws = new WebSocket(url, protocols || []);
+    ws.binaryType = hidden_attr(this, "binaryType");
+
+    hidden_attr(this, "wsInstance", ws);
+
 
     let timeout = setTimeout(function() {
         /*if (self.debug || ReconnectingWebSocket.debugAll) {*/
@@ -75,6 +90,7 @@ module.exports = function(ws, { reconnectAttempt }){
     ws.onclose = (event)=>{
         clearTimeout(timeout);
         ws = null;
+        hidden_attr(this, "wsInstance", null);
 
         if (hidden_attr(this, "forcedClose")){
             hidden_attr(this, "readyState", DefaultWebSocket.CLOSED);

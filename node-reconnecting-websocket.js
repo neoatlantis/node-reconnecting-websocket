@@ -95,7 +95,7 @@
 
 
 const DefaultWebSocket = require("ws");
-const _decorate_ws = require("./_decorate_ws");
+const _create_ws = require("./_create_ws");
 const hidden_attr = require("./_symbols");
 
 
@@ -191,12 +191,7 @@ class ReconnectingWebSocket extends EventTarget{
     }
 
     open(reconnectAttempt) {
-        const WebSocket = hidden_attr(this, "ws");
-        const url = hidden_attr(this, "url");
-        const protocols = hidden_attr(this, "protocols");
-
-        this.#ws = new WebSocket(url, protocols || []);
-        this.#ws.binaryType = hidden_attr(this, "binaryType");
+        
 
         if (hidden_attr(this, reconnectAttempt)){
             if(
@@ -215,7 +210,8 @@ class ReconnectingWebSocket extends EventTarget{
             console.debug('ReconnectingWebSocket', 'attempt-connect', this.url);
         }*/
 
-        _decorate_ws.call(this, this.#ws, { reconnectAttempt });
+
+        _create_ws.call(this, { reconnectAttempt });
     }
 
         
@@ -226,10 +222,11 @@ class ReconnectingWebSocket extends EventTarget{
      * @param data a text string, ArrayBuffer or Blob to send to the server.
      */
     send(data) {
+        let ws = hidden_attr(this, "wsInstance");
         if (ws) {
-            if (self.debug || ReconnectingWebSocket.debugAll) {
+            /*if (this.debug || ReconnectingWebSocket.debugAll) {
                 console.debug('ReconnectingWebSocket', 'send', self.url, data);
-            }
+            }*/
             return ws.send(data);
         } else {
             throw 'INVALID_STATE_ERR : Pausing to reconnect websocket';
@@ -241,13 +238,15 @@ class ReconnectingWebSocket extends EventTarget{
      * If the connection is already CLOSED, this method does nothing.
      */
     close(code, reason) {
+        let ws = hidden_attr(this, "wsInstance");
+
         // Default CLOSE_NORMAL code
         if (typeof code == 'undefined') {
             code = 1000;
         }
         hidden_attr(this, "forcedClose", true);
-        if (this.#ws) {
-            this.#ws.close(code, reason);
+        if (ws) {
+            ws.close(code, reason);
         }
     }
 
@@ -256,8 +255,9 @@ class ReconnectingWebSocket extends EventTarget{
      * For example, if the app suspects bad data / missed heart beats, it can try to refresh.
      */
     refresh() {
-        if (this.#ws) {
-            this.#ws.close();
+        let ws = hidden_attr(this, "wsInstance");
+        if (ws) {
+            ws.close();
         }
     }
 
