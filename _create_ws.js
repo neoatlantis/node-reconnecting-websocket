@@ -25,10 +25,10 @@ function do_heartbeat(ws){
     ws.on("pong", recv_heartbeat);
 
     const pinging = setInterval(()=>{
-        if(
-            hidden_attr(this, "pingLast") - hidden_attr(this, "pongLast") > 
-            pingTimeout
-        ){
+        let pingLast = hidden_attr(this, "pingLast"),
+            pongLast = hidden_attr(this, "pongLast");
+        if(pingLast - pongLast > pingTimeout){
+            console.log('pinglast', pingLast, 'pongLast', pongLast, 'timedout');
             on_timeout();
         }
 
@@ -36,15 +36,27 @@ function do_heartbeat(ws){
             !ws ||
             hidden_attr(this, "pingTimedOut")
         ){
-            clearInterval(pinging);
+            undo_heartbeat();
             return;
         }
         hidden_attr(this, "pingLast", new Date().getTime());
+        if(pongLast < 1){
+            hidden_attr(this, "pongLast", new Date().getTime());
+        }
+
         ws.ping();
         console.log("ReconnectingWebsocket: send ping!");
     }, pingTimeout / pingFrequency);
+    hidden_attr(this, "pingInterval", pinging);
+
 }
 
+function undo_heartbeat(){
+    console.log("undo heartbeat");
+    let pinging = hidden_attr(this, "pingInterval");
+    clearInterval(pinging);
+    hidden_attr.unset(this, "pingInterval");
+}
 
 
 
@@ -91,6 +103,7 @@ module.exports = function({ reconnectAttempt }){
         clearTimeout(timeout);
         ws = null;
         hidden_attr(this, "wsInstance", null);
+        //undo_heartbeat();
 
         if (hidden_attr(this, "forcedClose")){
             hidden_attr(this, "readyState", DefaultWebSocket.CLOSED);
@@ -151,7 +164,7 @@ module.exports = function({ reconnectAttempt }){
 
     // if ws has .ping() defined(as in `ws` library), use that
     if(ws.ping !== undefined){
-        do_heartbeat.call(this, ws);
+        //do_heartbeat.call(this, ws);
     }
 
 }
